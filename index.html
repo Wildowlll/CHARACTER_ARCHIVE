@@ -192,7 +192,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .detail-img-wrap:hover .detail-img-change { opacity: 1; }
 
 /* 오른쪽 정보 패널 */
-.detail-info {}
+.detail-info { flex: 1; min-width: 0; }
 .detail-name { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 4px; }
 .detail-sub { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-3); margin-bottom: 20px; }
 
@@ -218,14 +218,14 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .detail-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
 .detail-stat-row { display: flex; align-items: center; gap: 8px; }
 .dst-name { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; color: var(--text-2); width: 32px; flex-shrink: 0; }
-.dst-track { flex: 1; height: 5px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+.dst-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
 .dst-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width 0.4s; }
 .dst-val { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-3); width: 28px; text-align: right; flex-shrink: 0; }
 
 .detail-skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; }
 .detail-skill-row { display: flex; align-items: center; gap: 7px; }
-.dsk-name { font-size: 11px; color: var(--text-2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dsk-track { width: 60px; height: 3px; flex-shrink: 0; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+.dsk-name { font-size: 11px; color: var(--text-2); width: 68px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dsk-track { flex: 1; height: 4px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
 .dsk-fill { height: 100%; border-radius: 99px; background: var(--accent); }
 .dsk-val { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-3); width: 24px; text-align: right; flex-shrink: 0; }
 
