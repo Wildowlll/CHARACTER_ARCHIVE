@@ -652,8 +652,33 @@ document.getElementById('btn-capture-list').addEventListener('click', async func
 document.getElementById('btn-capture-detail').addEventListener('click', async function() {
   this.textContent='저장 중...'; this.disabled=true;
   try {
-    const char=characters[currentDetailIdx];
-    await captureEl(document.getElementById('detail-body'), (char.name||'character').replace(/\s+/g,'_')+'.png');
+    const char = characters[currentDetailIdx];
+    const detailBody = document.getElementById('detail-body');
+    const detailCanvas = document.querySelector('.detail-img-canvas');
+
+    // html2canvas로 detail-body 캡처 (onclone에서 detail-img-wrap을 우리 canvas로 교체)
+    const result = await html2canvas(detailBody, {
+      backgroundColor: '#F0EEE9',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      onclone: (doc, clonedEl) => {
+        // 클론된 wrap 찾기
+        const clonedWrap = clonedEl.querySelector('#detail-img-wrap');
+        if (!clonedWrap || !detailCanvas) return;
+        // 기존 canvas/img 제거
+        clonedWrap.innerHTML = '';
+        // 우리가 그린 canvas를 이미지로 변환해서 삽입
+        const img = doc.createElement('img');
+        img.src = detailCanvas.toDataURL('image/png');
+        img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block;';
+        clonedWrap.appendChild(img);
+      }
+    });
+    const a = document.createElement('a');
+    a.href = result.toDataURL('image/png');
+    a.download = (char.name||'character').replace(/\s+/g,'_') + '.png';
+    a.click();
   } finally { this.textContent='이미지 저장'; this.disabled=false; }
 });
 
