@@ -645,8 +645,41 @@ async function captureEl(el, filename) {
 document.getElementById('btn-capture-list').addEventListener('click', async function() {
   if (!characters.length) { showToast('캐릭터를 먼저 추가해주세요.'); return; }
   this.textContent='저장 중...'; this.disabled=true;
-  try { await captureEl(document.querySelector('.list-main'), (document.getElementById('scenario-name').value||'party').replace(/\s+/g,'_')+'.png'); }
-  finally { this.textContent='이미지 저장'; this.disabled=false; }
+  try {
+    // settings-bar 제외, list-header + list-main 합쳐서 캡처
+    const header = document.querySelector('.list-header');
+    const main = document.querySelector('.list-main');
+    // 임시 wrapper 생성
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;top:-9999px;left:0;background:#FAFAF8;width:' + header.offsetWidth + 'px;';
+    wrapper.appendChild(header.cloneNode(true));
+    wrapper.appendChild(main.cloneNode(true));
+    document.body.appendChild(wrapper);
+    const result = await html2canvas(wrapper, {
+      backgroundColor: '#F0EEE9',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      onclone: (doc, clonedEl) => {
+        clonedEl.querySelectorAll('img').forEach(img => {
+          const orig = main.querySelector(`img[src="${img.src}"]`) || img;
+          const rect = orig.getBoundingClientRect();
+          const parent = img.parentElement;
+          parent.style.backgroundImage = `url(${img.src})`;
+          parent.style.backgroundSize = 'cover';
+          parent.style.backgroundPosition = 'top center';
+          parent.style.width = rect.width + 'px';
+          parent.style.height = rect.height + 'px';
+          img.style.display = 'none';
+        });
+      }
+    });
+    document.body.removeChild(wrapper);
+    const a = document.createElement('a');
+    a.href = result.toDataURL('image/png');
+    a.download = (document.getElementById('scenario-name').value||'archive').replace(/\s+/g,'_') + '.png';
+    a.click();
+  } finally { this.textContent='이미지 저장'; this.disabled=false; }
 });
 
 document.getElementById('btn-capture-detail').addEventListener('click', async function() {
