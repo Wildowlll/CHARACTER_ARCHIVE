@@ -657,9 +657,16 @@ document.getElementById('btn-capture-list').addEventListener('click', async func
     // 버튼 영역 숨기기
     const headerRight = wrapper.querySelector('.header-right');
     if (headerRight) headerRight.style.display = 'none';
-    // 설명 텍스트 overflow 해제
-    const scenarioWrap = wrapper.querySelector('.scenario-title-wrap');
-    if (scenarioWrap) scenarioWrap.style.overflow = 'visible';
+    // input 태그는 cloneNode에서 value가 렌더 안 됨 → div로 교체
+    wrapper.querySelectorAll('input.editable').forEach(input => {
+      const div = document.createElement('div');
+      div.textContent = input.value;
+      div.style.cssText = window.getComputedStyle(input).cssText;
+      div.style.whiteSpace = 'normal';
+      div.style.overflow = 'visible';
+      div.style.width = 'auto';
+      input.parentNode.replaceChild(div, input);
+    });
 
     const result = await html2canvas(wrapper, {
       backgroundColor: '#F0EEE9',
