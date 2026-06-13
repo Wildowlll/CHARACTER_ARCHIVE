@@ -646,15 +646,21 @@ document.getElementById('btn-capture-list').addEventListener('click', async func
   if (!characters.length) { showToast('캐릭터를 먼저 추가해주세요.'); return; }
   this.textContent='저장 중...'; this.disabled=true;
   try {
-    // settings-bar 제외, list-header + list-main 합쳐서 캡처
     const header = document.querySelector('.list-header');
     const main = document.querySelector('.list-main');
-    // 임시 wrapper 생성
     const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;top:-9999px;left:0;background:#FAFAF8;width:' + header.offsetWidth + 'px;';
+    wrapper.style.cssText = `position:fixed;top:-9999px;left:0;background:#FAFAF8;width:${header.offsetWidth}px;`;
     wrapper.appendChild(header.cloneNode(true));
     wrapper.appendChild(main.cloneNode(true));
     document.body.appendChild(wrapper);
+
+    // 버튼 영역 숨기기
+    const headerRight = wrapper.querySelector('.header-right');
+    if (headerRight) headerRight.style.display = 'none';
+    // 설명 텍스트 overflow 해제
+    const scenarioWrap = wrapper.querySelector('.scenario-title-wrap');
+    if (scenarioWrap) scenarioWrap.style.overflow = 'visible';
+
     const result = await html2canvas(wrapper, {
       backgroundColor: '#F0EEE9',
       scale: 2,
