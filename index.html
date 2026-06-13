@@ -449,10 +449,30 @@ document.getElementById('img-input').addEventListener('change', function(e) {
 
 /* ── 이미지 캡처 공통 ── */
 async function captureEl(el, filename) {
-  const canvas=await html2canvas(el, { backgroundColor:'#F0EEE9', scale:2, useCORS:true, logging:false });
-  const a=document.createElement('a');
-  a.href=canvas.toDataURL('image/png');
-  a.download=filename; a.click();
+  const canvas = await html2canvas(el, {
+    backgroundColor: '#F0EEE9',
+    scale: 2,
+    useCORS: true,
+    logging: false,
+    onclone: (doc, clonedEl) => {
+      // object-fit:cover 이미지를 background-image로 교체해서 찌그러짐 방지
+      clonedEl.querySelectorAll('img').forEach(img => {
+        const orig = el.querySelector(`img[src="${img.src}"]`) || img;
+        const rect = orig.getBoundingClientRect();
+        const parent = img.parentElement;
+        parent.style.backgroundImage = `url(${img.src})`;
+        parent.style.backgroundSize = 'cover';
+        parent.style.backgroundPosition = 'top center';
+        parent.style.width = rect.width + 'px';
+        parent.style.height = rect.height + 'px';
+        img.style.display = 'none';
+      });
+    }
+  });
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = filename;
+  a.click();
 }
 
 document.getElementById('btn-capture-list').addEventListener('click', async function() {
