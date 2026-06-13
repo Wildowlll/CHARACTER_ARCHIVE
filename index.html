@@ -131,10 +131,9 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 
 #detail-page { background: var(--bg); }
 .detail-body {
-  max-width: 900px; margin: 0 auto;
+  max-width: 1000px; margin: 0 auto;
   padding: 2.5rem 2.5rem 4rem;
-  display: grid;
-  grid-template-columns: 300px 1fr;
+  display: flex;
   gap: 2rem;
   align-items: start;
 }
@@ -145,18 +144,22 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   background: var(--surface2);
   position: relative;
   border: 1px solid var(--border);
+  width: 300px;
   height: 400px;
   overflow: hidden;
   cursor: pointer;
   flex-shrink: 0;
 }
-.detail-img-wrap img {
+.detail-img-canvas {
+  position: absolute; inset: 0;
   width: 100%; height: 100%;
-  object-fit: cover; object-position: top center;
-  display: block;
-  transform-origin: center center;
-  transition: transform 0.1s ease;
   pointer-events: none;
+  display: block;
+  /* canvas의 CSS 크기는 wrap에 맞추되, 픽셀 해상도는 JS에서 따로 설정 */
+}
+/* img 태그는 캔버스 fallback용 - 숨김 */
+.detail-img-wrap img {
+  display: none;
 }
 /* 상하 리사이즈 핸들 */
 .detail-img-resize {
@@ -426,7 +429,7 @@ function openDetail(idx) {
 
   // 이미지
   const imgHTML=char._img
-    ?`<img src="${char._img}" alt="${char.name}" id="detail-img-el"><div class="detail-img-zoom-hint">휠로 확대/축소</div><button class="detail-img-change" data-action="detail-img">이미지 변경</button><div class="detail-img-resize" id="detail-img-resize"></div>`
+    ?`<img src="${char._img}" alt="${char.name}" id="detail-img-el"><div class="detail-img-zoom-hint">휠 확대/축소 · 휠버튼 드래그로 이동</div><button class="detail-img-change" data-action="detail-img">이미지 변경</button><div class="detail-img-resize" id="detail-img-resize"></div>`
     :`<div class="detail-img-placeholder"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span>클릭해서 이미지 추가</span></div><button class="detail-img-change" data-action="detail-img">이미지 추가</button><div class="detail-img-resize" id="detail-img-resize"></div>`;
 
   // 메타
@@ -453,10 +456,10 @@ function openDetail(idx) {
       ${skillRows?`<div class="detail-section"><div class="detail-section-label">ALL SKILLS</div><div class="detail-skill-grid">${skillRows}</div></div>`:''}
     </div>`;
 
-  imgScale = 1;
-  const prevWrap = document.getElementById('detail-img-wrap');
-  if (prevWrap) prevWrap.style.overflow = 'hidden';
+  imgScale = 1; imgX = 0; imgY = 0;
   showPage('detail-page');
+  // innerHTML 렌더 후 canvas에 이미지 로드
+  setTimeout(() => loadDetailCanvas(char._img || null), 0);
 }
 
 document.getElementById('back-btn').addEventListener('click', ()=>showPage('list-page'));
@@ -473,19 +476,106 @@ document.getElementById('detail-page').addEventListener('click', function(e) {
   }
 });
 
-/* ── 상세 이미지 휠 줌 ── */
-let imgScale = 1;
+/* ── 상세 이미지 캔버스 렌더 ── */
+let imgScale = 1, imgX = 0, imgY = 0;
+let detailImgObj = null;
+let detailBaseScale = 1; // 최초 로드 시 고정, 에리어 리사이즈에 불변
+let dragStart = null;
+
+function drawDetailImg() {
+  const wrap = document.getElementById('detail-img-wrap');
+  const canvas = wrap && wrap.querySelector('canvas.detail-img-canvas');
+  if (!canvas || !detailImgObj) return;
+  // canvas 픽셀 해상도를 wrap 실제 크기에 맞춤 (CSS 크기와 별개)
+  const W = wrap.clientWidth;
+  const H = wrap.clientHeight;
+  if (W === 0 || H === 0) return;
+  if (canvas.width !== W) canvas.width = W;
+  if (canvas.height !== H) canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  const iw = detailImgObj.naturalWidth, ih = detailImgObj.naturalHeight;
+  // detailBaseScale 고정 → 에리어 크기와 무관하게 비율 유지
+  const dw = iw * detailBaseScale * imgScale;
+  const dh = ih * detailBaseScale * imgScale;
+  const dx = (W - dw) / 2 + imgX;
+  const dy = (H - dh) / 2 + imgY;
+  ctx.drawImage(detailImgObj, dx, dy, dw, dh);
+}
+
+// openDetail 호출 시 캔버스에 이미지 로드
+function loadDetailCanvas(src) {
+  imgScale = 1; imgX = 0; imgY = 0;
+  const wrap = document.getElementById('detail-img-wrap');
+  if (!wrap) return;
+  let canvas = wrap.querySelector('canvas.detail-img-canvas');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.className = 'detail-img-canvas';
+    wrap.insertBefore(canvas, wrap.firstChild);
+  }
+  if (!src) { detailImgObj = null; const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); return; }
+  const img = new Image();
+  img.onload = () => {
+    detailImgObj = img;
+    // 최초 로드 시 wrap 크기 기준으로 baseScale 고정
+    const wrap2 = document.getElementById('detail-img-wrap');
+    const W = wrap2 ? wrap2.clientWidth : 300;
+    const H = wrap2 ? wrap2.clientHeight : 400;
+    detailBaseScale = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+    drawDetailImg();
+  };
+  img.src = src;
+}
+
+// 휠 줌
 document.getElementById('detail-page').addEventListener('wheel', function(e) {
   const wrap = e.target.closest('#detail-img-wrap');
-  if (!wrap) return;
+  if (!wrap || !detailImgObj) return;
   e.preventDefault();
-  const img = wrap.querySelector('img');
-  if (!img) return;
-  imgScale = Math.min(3, Math.max(0.5, imgScale - e.deltaY * 0.001));
-  img.style.transform = `scale(${imgScale})`;
-  // 줌아웃 시 overflow visible로 전환해서 잘림 방지
-  wrap.style.overflow = imgScale < 1 ? 'visible' : 'hidden';
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left - rect.width / 2;
+  const my = e.clientY - rect.top - rect.height / 2;
+  const prevScale = imgScale;
+  imgScale = Math.min(4, Math.max(0.2, imgScale - e.deltaY * 0.002));
+  // 마우스 기준으로 offset 보정
+  const ratio = imgScale / prevScale;
+  imgX = mx + (imgX - mx) * ratio;
+  imgY = my + (imgY - my) * ratio;
+  drawDetailImg();
 }, { passive: false });
+
+// 휠버튼 드래그
+document.getElementById('detail-page').addEventListener('mousedown', function(e) {
+  if (e.button !== 1) return;
+  const wrap = e.target.closest('#detail-img-wrap');
+  if (!wrap || !detailImgObj) return;
+  e.preventDefault();
+  dragStart = { x: e.clientX - imgX, y: e.clientY - imgY };
+  wrap.style.cursor = 'grabbing';
+  function onMove(ev) {
+    imgX = ev.clientX - dragStart.x;
+    imgY = ev.clientY - dragStart.y;
+    drawDetailImg();
+  }
+  function onUp() {
+    dragStart = null;
+    wrap.style.cursor = 'pointer';
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
+
+// 이미지 에리어 리사이즈 시 캔버스 재렌더
+let rafId = null;
+const resizeObs = new ResizeObserver(() => {
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(() => { drawDetailImg(); rafId = null; });
+});
+// detail-page가 생성된 후 wrap을 감시 (wrap은 항상 존재)
+resizeObs.observe(document.getElementById('detail-page'));
 
 /* ── 상세 이미지 상하 리사이즈 ── */
 document.getElementById('detail-page').addEventListener('mousedown', function(e) {
@@ -499,6 +589,7 @@ document.getElementById('detail-page').addEventListener('mousedown', function(e)
   function onMove(ev) {
     const newH = Math.max(150, Math.min(800, startH + (ev.clientY - startY)));
     wrap.style.height = newH + 'px';
+    drawDetailImg();
   }
   function onUp() {
     document.removeEventListener('mousemove', onMove);
@@ -515,7 +606,9 @@ document.getElementById('img-input').addEventListener('change', function(e) {
   r.onload=ev=>{
     characters[pendingImgIdx]._img=ev.target.result;
     renderGrid();
-    if (currentDetailIdx===pendingImgIdx) openDetail(pendingImgIdx);
+    if (currentDetailIdx===pendingImgIdx) {
+      openDetail(pendingImgIdx);
+    }
     pendingImgIdx=null;
   };
   r.readAsDataURL(f);
